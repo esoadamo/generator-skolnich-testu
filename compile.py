@@ -52,6 +52,18 @@ def format_category(category_name: str, category_data: dict, index: int, questio
     return output
 
 
+def load_test_categories(test_input: dict) -> dict:
+    categories = {}
+
+    if 'includes' in test_input:
+        for include in test_input['includes']:
+            with open(include + '.yaml', 'r') as f:
+                categories.update(load_test_categories(load(f)))
+
+    categories.update(test_input.get('categories', {}))
+    return categories
+
+
 def format_test(test_input: dict, test_group: str, answers: bool) -> str:
     group_number = int.from_bytes(test_group.encode('utf8'), 'little')
 
@@ -137,6 +149,7 @@ async def main() -> None:
 
     with test_input_file.open('r') as f:
         test_input = load(f)
+    test_input['categories'] = load_test_categories(test_input)
 
     file_out_assigments = Path('testy.pdf')
     file_out_solution = Path('testy_s_resenim.pdf')

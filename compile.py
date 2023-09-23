@@ -53,18 +53,15 @@ def format_category(category_name: str, category_data: dict, index: int, questio
 
 
 def format_test(test_input: dict, test_group: str, answers: bool) -> str:
-    test_input = dict(test_input)
-
     group_number = int.from_bytes(test_group.encode('utf8'), 'little')
 
-    output = f"# Test: {test_input['$name']}\n\n" \
+    output = f"# Test: {test_input['name']}\n\n" \
              f"*Skupina: {test_group}*" + (", autorské řešení" if answers else "") + "\n\n" \
              f"**Jméno**: " + '\\_' * 40 + ' ' + \
              f"**Datum**: " + '\\_' * 20 + '\n\n' \
              '## Zadání\n\n'
-    del test_input['$name']
 
-    categories = test_input
+    categories = test_input['categories']
 
     rnd = Random(group_number)
     question_index = 0

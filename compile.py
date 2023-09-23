@@ -2,7 +2,7 @@ import asyncio
 from yaml import load
 from sys import argv
 from pathlib import Path
-from random import choice
+from random import Random
 from subprocess import check_call
 from tempfile import mkdtemp, mkstemp
 from shutil import rmtree, move
@@ -21,32 +21,34 @@ def format_question(question: dict, index: int, questions_total: int) -> str:
     return output
 
 
-def format_category(category_name: str, category_data: dict, index: int, questions_total: int) -> str:
+def format_category(category_name: str, category_data: dict, index: int, questions_total: int, rnd: Random) -> str:
     output = ""
-    questions = list(category_data['questions'])
-    for _ in range(category_data['select']):
-        question = choice(questions)
-        questions.remove(question)
+    for question in rnd.sample(category_data['questions'], k=category_data['select']):
         output += format_question(question, index, questions_total) + '\n'
         index += 1
     return output
 
 
-def format_test(test_input: dict) -> str:
+def format_test(test_input: dict, version: int) -> str:
     test_input = dict(test_input)
+
+    version_str = hex(10 + version).upper()[2:]
+
     output = f"# Test: {test_input['$name']}\n\n" \
+             f"*Skupina: {version_str}*\n\n" \
              f"**Jméno**: " + '\\_' * 40 + ' ' + \
              f"**Datum**: " + '\\_' * 20 + '\n\n' \
              '## Zadání\n\n'
     del test_input['$name']
 
     categories = test_input
-    
+
+    rnd = Random(version)
     question_index = 0
     questions_total = sum(map(lambda x: x['select'], categories.values()))
 
     for category_name, category_data in categories.items():
-        output += format_category(category_name, category_data, question_index, questions_total) + "\n"
+        output += format_category(category_name, category_data, question_index, questions_total, rnd) + "\n"
         question_index += category_data['select']
     return output
 
@@ -61,7 +63,7 @@ async def create_test_pdf(test_input: dict, index: int, dir_pdf: Path) -> Path:
     file_pdf.parent.mkdir(exist_ok=True, parents=True)
 
     with file_md.open('w') as f:
-        f.write(format_test(test_input))
+        f.write(format_test(test_input, index))
     process = await asyncio.subprocess.create_subprocess_exec(
         "pandoc",
         "--pdf-engine=xelatex",

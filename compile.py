@@ -11,7 +11,7 @@ from shutil import rmtree, move
 from os import close
 from string import ascii_uppercase
 from itertools import product
-from multiprocessing import cpu_count
+from datetime import datetime
 
 
 def format_question(question: dict, index: int, questions_total: int, answers: bool, rnd: Random) -> str:
@@ -105,7 +105,7 @@ async def create_test_pdf(test_input: dict, file_out: Path, test_count: int, ans
     dir_pdf = Path(mkdtemp(prefix="testy_pdf_", dir='/ram'))
 
     pdfs_tasks = [create_single_test_pdf(test_input, group, dir_pdf, answers) for group in generate_group(test_count)]
-    file_pdfs = await gather_with_concurrency(max(cpu_count() // 2, 1), *pdfs_tasks)
+    file_pdfs = await gather_with_concurrency(8, *pdfs_tasks)
 
     check_call(["pdftk"] + [f"{x.name}" for x in file_pdfs] + ["cat", "output", "merged.pdf"], cwd=dir_pdf)
     move(dir_pdf.joinpath("merged.pdf"), file_out)
@@ -118,7 +118,7 @@ def generate_group(iterations: int = math.inf) -> Iterator[str]:
     length = 1
     while iterations > 0:
         for combo in product(ascii_uppercase, repeat=length):
-            yield ''.join(combo)
+            yield ''.join(combo) + f" ({datetime.now().year})"
             iterations -= 1
             if iterations <= 0:
                 break

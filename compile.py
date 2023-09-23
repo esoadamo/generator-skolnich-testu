@@ -76,7 +76,7 @@ def format_test(test_input: dict, test_group: str, answers: bool) -> str:
     return output
 
 
-async def create_test_pdf(test_input: dict, group: str, dir_pdf: Path, answers: bool) -> Path:
+async def create_single_test_pdf(test_input: dict, group: str, dir_pdf: Path, answers: bool) -> Path:
     handle, file_md_path = mkstemp(prefix='assigment_', suffix='.md')
     close(handle)
 
@@ -99,6 +99,19 @@ async def create_test_pdf(test_input: dict, group: str, dir_pdf: Path, answers: 
     file_md.unlink()
     print(f'[*] {file_pdf}')
     return file_pdf
+
+
+async def create_test_pdf(test_input: dict, file_out: Path, test_count: int, answers: bool) -> Path:
+    dir_pdf = Path(mkdtemp(prefix="testy_pdf_", dir='/ram'))
+
+    pdfs_tasks = [create_single_test_pdf(test_input, group, dir_pdf, answers) for group in generate_group(test_count)]
+    file_pdfs = await gather_with_concurrency(max(cpu_count() // 2, 1), *pdfs_tasks)
+
+    check_call(["pdftk"] + [f"{x.name}" for x in file_pdfs] + ["cat", "output", "merged.pdf"], cwd=dir_pdf)
+    move(dir_pdf.joinpath("merged.pdf"), file_out)
+    print(file_out)
+    rmtree(dir_pdf)
+    return file_out
 
 
 def generate_group(iterations: int = math.inf) -> Iterator[str]:
@@ -125,20 +138,18 @@ async def main() -> None:
     test_input_file = Path(argv[1])
     test_count = int(argv[2])
 
-    dir_pdf = Path(mkdtemp(prefix="testy_pdf_", dir='/ram'))
-    file_out = Path('testy.pdf')
-
     with test_input_file.open('r') as f:
         test_input = load(f)
 
-    pdfs_tasks = [create_test_pdf(test_input, group, dir_pdf, True) for group in generate_group(test_count)]
-    file_pdfs = await gather_with_concurrency(max(cpu_count() - 1, 1), *pdfs_tasks)
+    file_out_assigments = Path('testy.pdf')
+    file_out_solution = Path('testy_s_resenim.pdf')
 
-    check_call(["pdftk"] + [f"{x.name}" for x in file_pdfs] + ["cat", "output", "merged.pdf"], cwd=dir_pdf)
-    move(dir_pdf.joinpath("merged.pdf"), file_out)
-    print(file_out)
-    rmtree(dir_pdf)
-    check_call(['xdg-open', f"{file_out}"])
+    tasks = []
+    for file_out, answers in ((file_out_assigments, False), (file_out_solution, True)):
+        tasks.append(create_test_pdf(test_input, file_out, test_count, answers))
+
+    await asyncio.gather(*tasks)
+    check_call(['xdg-open', f"{file_out_assigments}"])
 
 
 if __name__ == "__main__":

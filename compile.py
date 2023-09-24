@@ -69,7 +69,7 @@ def format_test(test_input: dict, test_group: str, answers: bool) -> str:
 
     output = f"# Test: {test_input['name']}\n\n" \
              f"*Skupina: {test_group}*" + (", autorské řešení" if answers else "") + "\n\n" \
-             f"**Jméno**: " + '\\_' * 40 + ' ' + \
+             f"**Jméno**: " + '\\_' * 30 + ' ' + \
              f"**Datum**: " + '\\_' * 20 + '\n\n' \
              '## Zadání\n\n'
 
@@ -99,7 +99,8 @@ async def create_single_test_pdf(test_input: dict, group: str, dir_pdf: Path, an
     process = await asyncio.subprocess.create_subprocess_exec(
         "pandoc",
         "--pdf-engine=xelatex",
-        "-V", 'geometry:top=2cm, bottom=1.5cm, left=2cm, right=2cm',
+        "-V", 'geometry:top=1cm, bottom=1cm, left=1cm, right=1cm',
+        "-V", "fontsize=12pt",
         f"{file_md.absolute()}",
         '-o', f"{file_pdf.absolute()}"
         )

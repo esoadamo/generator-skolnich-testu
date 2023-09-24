@@ -1,0 +1,32 @@
+name: "Jednoduchý test"
+categories:
+  "Otazky s textovou odpovedi":
+    select: 1
+    questions:
+     - question: |
+        Více
+        řádkový úvod s **tučným** textem.
+       text:
+        Otázka na text 1: odpověď 1
+        Otázka na text 2: odpověď 2
+  "Otázky s výběrem možností":
+    select: 2
+    questions:
+     - question: Co je ovoce?
+       options:
+         - "jablko<"
+         - hodinky
+         - laptop
+         - židle
+     - question: Co je zelenina?
+       options:
+         - hodinky
+         - laptop
+         - "okurka<"
+         - "židle"
+     - question: Co je nábytek?
+       options:
+         - hodinky
+         - laptop
+         - "okurka"
+         - "židle<"

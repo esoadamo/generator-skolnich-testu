@@ -1,0 +1,25 @@
+name: "Rozšiřující test"
+includes:
+ - jednoduchy-test
+categories:
+  "Další otázky s výběrem možností":
+    select: 1
+    questions:
+     - question: Kolik je 2 + 2?
+       options:
+         - "6"
+         - 4<
+         - "8"
+         - "12"
+     - question: Kolik je 2 + 4?
+       options:
+         - 6<
+         - "8"
+         - "10"
+         - "12"
+     - question: Kolik je 4 + 2?
+       options:
+         - 6<
+         - "8"
+         - "10"
+         - "12"

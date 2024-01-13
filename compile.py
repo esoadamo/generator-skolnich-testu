@@ -11,7 +11,7 @@ from shutil import rmtree, move
 from os import close
 from string import ascii_uppercase
 from itertools import product
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def format_question(question: dict, index: int, questions_total: int, answers: bool, rnd: Random) -> str:
@@ -90,7 +90,7 @@ async def create_single_test_pdf(test_input: dict, group: str, dir_pdf: Path, an
     close(handle)
 
     file_md = Path(file_md_path)
-    file_pdf = dir_pdf.joinpath(f'group_{group}.pdf')
+    file_pdf = dir_pdf.joinpath('group_' + group.replace(' / ', '_') + '.pdf')
 
     file_pdf.parent.mkdir(exist_ok=True, parents=True)
 
@@ -126,9 +126,14 @@ async def create_test_pdf(test_input: dict, file_out: Path, test_count: int, ans
 
 def generate_group(iterations: int = math.inf) -> Iterator[str]:
     length = 1
+
+    # offset to match the school year
+    year_start = datetime.now() - timedelta(days=7*30)
+    year_end = year_start + timedelta(days=365)
+
     while iterations > 0:
         for combo in product(ascii_uppercase, repeat=length):
-            yield ''.join(combo) + f" ({datetime.now().year})"
+            yield ''.join(combo) + f" ({year_start.year} / {year_end.year})"
             iterations -= 1
             if iterations <= 0:
                 break

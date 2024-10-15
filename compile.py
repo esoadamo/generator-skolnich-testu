@@ -1,7 +1,7 @@
 import asyncio
 import math
 from typing import Iterator
-from yaml import load
+from yaml import load, Loader
 from sys import argv
 from pathlib import Path
 from random import Random
@@ -58,7 +58,7 @@ def load_test_categories(test_input: dict) -> dict:
     if 'includes' in test_input:
         for include in test_input['includes']:
             with open(include + '.yaml', 'r') as f:
-                categories.update(load_test_categories(load(f)))
+                categories.update(load_test_categories(load(f, Loader)))
 
     categories.update(test_input.get('categories', {}))
     return categories
@@ -154,7 +154,7 @@ async def main() -> None:
     test_count = int(argv[2])
 
     with test_input_file.open('r') as f:
-        test_input = load(f)
+        test_input = load(f, Loader)
     test_input['categories'] = load_test_categories(test_input)
 
     file_out_assigments = Path('testy.pdf')

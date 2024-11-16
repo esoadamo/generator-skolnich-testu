@@ -10,7 +10,7 @@ from tempfile import mkdtemp, mkstemp
 from shutil import rmtree, move
 from os import close
 from string import ascii_uppercase
-from itertools import product
+from itertools import product, zip_longest
 from datetime import datetime, timedelta
 
 from models import Question, Category, Test
@@ -48,9 +48,44 @@ def format_question(question: Question, index: int, questions_total: int, answer
             else:
                 option = "(" + option + ")"
             options.append(option)
-
         rnd.shuffle(options)
         output += (' ' * 10).join(options) + "\n\n"
+
+    if 'connect' in question:
+        options_left = set()
+        options_right = set()
+        correct_left = {}
+        correct_right = {}
+        codes_left = {}
+        codes_right = {}
+
+        for option in question['connect']:
+            left, right = option.split('---', 1)
+            options_left.add(left.strip())
+            options_right.add(right.strip())
+            correct_left[left.strip()] = right.strip()
+            correct_right[right.strip()] = left.strip()
+        options_left = list(options_left)
+        options_right = list(options_right)
+        rnd.shuffle(options_left)
+        rnd.shuffle(options_right)
+
+        for i, option in enumerate(options_left):
+            codes_left[option] = f"({i + 1})"
+        for code, option in zip(generate_group(len(options_right), add_years=False), options_right):
+            codes_right[option] = f"({code})"
+
+        for i, (left, right) in enumerate(zip_longest(options_left, options_right, fillvalue='')):
+            if left:
+                output += f"{codes_left[left]} {left}"
+                if answers:
+                    output += f" **-> {codes_right[correct_left[left]]} {correct_left[left]}**"
+            output += " \\hfill "
+            if right:
+                output += f"{codes_right[right]} {right}"
+            output += "\n\n"
+
+        output += "\n\n"
 
     return output
 
@@ -215,10 +250,11 @@ async def create_test_pdf(test_input: Test, file_out: Path, test_count: int, ans
     return file_out
 
 
-def generate_group(iterations: int = math.inf) -> Iterator[str]:
+def generate_group(iterations: int = math.inf, add_years: bool = True) -> Iterator[str]:
     """
     Generate group names
     :param iterations: how many groups to generate
+    :param add_years: True if the group name should include school years
     :return: group names
     """
     length = 1
@@ -229,7 +265,7 @@ def generate_group(iterations: int = math.inf) -> Iterator[str]:
 
     while iterations > 0:
         for combo in product(ascii_uppercase, repeat=length):
-            yield ''.join(combo) + f" ({year_start.year} / {year_end.year})"
+            yield ''.join(combo) + (f" ({year_start.year} / {year_end.year})" if add_years else '')
             iterations -= 1
             if iterations <= 0:
                 break

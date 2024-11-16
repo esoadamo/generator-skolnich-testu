@@ -10,13 +10,17 @@ class QuestionText(QuestionBase):
 class QuestionSelect(QuestionBase):
     options: List[str]
 
+class QuestionConnection(QuestionBase):
+    connect: List[str]
+
+Question = Union[QuestionText, QuestionSelect]
+
 class Category(TypedDict):
     select: int
-    questions: List[QuestionBase]
+    questions: List[Question]
 
 class Test(TypedDict):
     name: str
     includes: Optional[List[str]]
     categories: Dict[str, Category]
 
-Question = Union[QuestionText, QuestionSelect]

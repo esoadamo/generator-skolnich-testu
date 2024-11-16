@@ -30,3 +30,12 @@ categories:
          - laptop
          - "okurka"
          - "židle<"
+  "Spojovačka":
+    select: 1
+    questions:
+     - question: Spojte správně
+       connect:
+         - "jablko --- ovoce"
+         - "okurka --- zelenina"
+         - "židle --- nábytek"
+         - "stůl --- nábytek"

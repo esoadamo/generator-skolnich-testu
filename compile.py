@@ -13,8 +13,10 @@ from string import ascii_uppercase
 from itertools import product
 from datetime import datetime, timedelta
 
+from models import Question, Category, Test
 
-def format_question(question: dict, index: int, questions_total: int, answers: bool, rnd: Random) -> str:
+
+def format_question(question: Question, index: int, questions_total: int, answers: bool, rnd: Random) -> str:
     """
     Format single question from the test
     :param question: question data
@@ -53,7 +55,7 @@ def format_question(question: dict, index: int, questions_total: int, answers: b
     return output
 
 
-def format_category(category_name: str, category_data: dict, index: int, questions_total: int, rnd: Random, answers: bool, last_questions: Optional[Set[int]] = None) -> Tuple[str, Set[int]]:
+def format_category(category_name: str, category_data: Category, index: int, questions_total: int, rnd: Random, answers: bool, last_questions: Optional[Set[int]] = None) -> Tuple[str, Set[int]]:
     """
     Formats single category of questions
     :param category_name: category name
@@ -71,20 +73,20 @@ def format_category(category_name: str, category_data: dict, index: int, questio
     questions_all = category_data['questions']
     select_count = category_data['select']
 
-    questions_unused = [question for question in questions_all if question["$id"] not in last_questions]
-    questions_used = [question for question in questions_all if question["$id"] in last_questions]
+    questions_unused = [question for question in questions_all if question["_id"] not in last_questions]
+    questions_used = [question for question in questions_all if question["_id"] in last_questions]
     questions_missing_count = select_count - len(questions_unused)
     if questions_missing_count > 0:
         questions_unused += rnd.sample(questions_used, k=questions_missing_count)
 
     for question in rnd.sample(questions_unused, k=select_count):
         output += format_question(question, index, questions_total, answers, rnd) + '\n'
-        question_ids.add(question["$id"])
+        question_ids.add(question["_id"])
         index += 1
     return output, question_ids
 
 
-def load_test_categories(test_input: dict) -> dict:
+def load_test_categories(test_input: Test) -> dict:
     """
     Load test categories from the input file, including all includes
     Adds IDs to questions
@@ -103,7 +105,7 @@ def load_test_categories(test_input: dict) -> dict:
     question_id = 0
     for category in categories.values():
         for question in category['questions']:
-            question["$id"] = question_id
+            question["_id"] = question_id
             question_id += 1
 
     return categories
@@ -119,7 +121,7 @@ def group_to_random(group: str) -> Random:
     return Random(group_number)
 
 
-def format_test(test_input: dict, test_group: str, answers: bool, last_questions: Optional[Set[int]] = None) -> Tuple[str, Set[int]]:
+def format_test(test_input: Test, test_group: str, answers: bool, last_questions: Optional[Set[int]] = None) -> Tuple[str, Set[int]]:
     """
     Format a single test
 
@@ -185,7 +187,7 @@ async def create_single_test_pdf(test_content: str, group: str, dir_pdf: Path) -
     return file_pdf
 
 
-async def create_test_pdf(test_input: dict, file_out: Path, test_count: int, answers: bool) -> Path:
+async def create_test_pdf(test_input: Test, file_out: Path, test_count: int, answers: bool) -> Path:
     """
     Create a PDF file with rendered test for the selected number of groups
     :param test_input: test input data

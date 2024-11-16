@@ -22,6 +22,15 @@ Jednoduchý pomocník na generování testů pro žáky základních a střední
   - výběr z možností
 
 
+## Závislosti
+
+Na Ubuntu je potřeba nainstalovat balíčky:
+
+```bash
+apt install python3 texlive-all pandoc pdftk
+```
+
+
 ## Použití
 
 Příkaz

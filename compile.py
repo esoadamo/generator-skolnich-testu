@@ -1,6 +1,6 @@
 import asyncio
 import math
-from typing import Iterator
+from typing import Iterator, Optional, Set, Tuple
 from yaml import load, Loader
 from sys import argv
 from pathlib import Path
@@ -15,6 +15,15 @@ from datetime import datetime, timedelta
 
 
 def format_question(question: dict, index: int, questions_total: int, answers: bool, rnd: Random) -> str:
+    """
+    Format single question from the test
+    :param question: question data
+    :param index: current question index
+    :param questions_total: total number of questions
+    :param answers: True if answers should be included
+    :param rnd: random generator for given group
+    :return: formatted question text
+    """
     output = f"### ({index + 1}/{questions_total}) {question['question']}\n\n"
 
     if 'text' in question:
@@ -44,15 +53,44 @@ def format_question(question: dict, index: int, questions_total: int, answers: b
     return output
 
 
-def format_category(category_name: str, category_data: dict, index: int, questions_total: int, rnd: Random, answers: bool) -> str:
+def format_category(category_name: str, category_data: dict, index: int, questions_total: int, rnd: Random, answers: bool, last_questions: Optional[Set[int]] = None) -> Tuple[str, Set[int]]:
+    """
+    Formats single category of questions
+    :param category_name: category name
+    :param category_data: category data
+    :param index: current question index
+    :param questions_total: total number of questions
+    :param rnd: random generator for given group
+    :param answers: True if answers should be included
+    :param last_questions: IDs of questions used in last test
+    :return: formatted category text and IDs of used questions
+    """
     output = ""
-    for question in rnd.sample(category_data['questions'], k=category_data['select']):
+    question_ids = set()
+
+    questions_all = category_data['questions']
+    select_count = category_data['select']
+
+    questions_unused = [question for question in questions_all if question["$id"] not in last_questions]
+    questions_used = [question for question in questions_all if question["$id"] in last_questions]
+    questions_missing_count = select_count - len(questions_unused)
+    if questions_missing_count > 0:
+        questions_unused += rnd.sample(questions_used, k=questions_missing_count)
+
+    for question in rnd.sample(questions_unused, k=select_count):
         output += format_question(question, index, questions_total, answers, rnd) + '\n'
+        question_ids.add(question["$id"])
         index += 1
-    return output
+    return output, question_ids
 
 
 def load_test_categories(test_input: dict) -> dict:
+    """
+    Load test categories from the input file, including all includes
+    Adds IDs to questions
+    :param test_input: loaded file
+    :return: all test categories
+    """
     categories = {}
 
     if 'includes' in test_input:
@@ -61,11 +99,36 @@ def load_test_categories(test_input: dict) -> dict:
                 categories.update(load_test_categories(load(f, Loader)))
 
     categories.update(test_input.get('categories', {}))
+
+    question_id = 0
+    for category in categories.values():
+        for question in category['questions']:
+            question["$id"] = question_id
+            question_id += 1
+
     return categories
 
 
-def format_test(test_input: dict, test_group: str, answers: bool) -> str:
-    group_number = int.from_bytes(test_group.encode('utf8'), 'little')
+def group_to_random(group: str) -> Random:
+    """
+    Create a random generator from the group name
+    :param group: test group name
+    :return: Random object instance
+    """
+    group_number = int.from_bytes(group.encode('utf8'), 'little')
+    return Random(group_number)
+
+
+def format_test(test_input: dict, test_group: str, answers: bool, last_questions: Optional[Set[int]] = None) -> Tuple[str, Set[int]]:
+    """
+    Format a single test
+
+    :param test_input: test input data with categories
+    :param test_group: test group to generate for
+    :param answers: True if answers should be included
+    :param last_questions: set of IDs of questions used in previous tests
+    :return: test text content and IDs of used questions
+    """
 
     output = f"# Test: {test_input['name']}\n\n" \
              f"*Skupina: {test_group}*" + (", autorské řešení" if answers else "") + "\n\n" \
@@ -75,17 +138,28 @@ def format_test(test_input: dict, test_group: str, answers: bool) -> str:
 
     categories = test_input['categories']
 
-    rnd = Random(group_number)
+    last_questions = last_questions or set()
+    rnd = group_to_random(test_group)
     question_index = 0
     questions_total = sum(map(lambda x: x['select'], categories.values()))
 
+    question_ids = set()
     for category_name, category_data in categories.items():
-        output += format_category(category_name, category_data, question_index, questions_total, rnd, answers) + "\n"
+        content, questions = format_category(category_name, category_data, question_index, questions_total, rnd, answers, last_questions)
+        question_ids.update(questions)
+        output += content + "\n"
         question_index += category_data['select']
-    return output
+    return output, question_ids
 
 
-async def create_single_test_pdf(test_input: dict, group: str, dir_pdf: Path, answers: bool) -> Path:
+async def create_single_test_pdf(test_content: str, group: str, dir_pdf: Path) -> Path:
+    """
+    Create a PDF file with rendered test for a single group
+    :param test_content: raw text content of the test
+    :param group: group name
+    :param dir_pdf: where to save the output file
+    :return: path to the created file
+    """
     handle, file_md_path = mkstemp(prefix='assigment_', suffix='.md')
     close(handle)
 
@@ -95,7 +169,7 @@ async def create_single_test_pdf(test_input: dict, group: str, dir_pdf: Path, an
     file_pdf.parent.mkdir(exist_ok=True, parents=True)
 
     with file_md.open('w') as f:
-        f.write(format_test(test_input, group, answers))
+        f.write(test_content)
     process = await asyncio.subprocess.create_subprocess_exec(
         "pandoc",
         "--pdf-engine=xelatex",
@@ -112,9 +186,24 @@ async def create_single_test_pdf(test_input: dict, group: str, dir_pdf: Path, an
 
 
 async def create_test_pdf(test_input: dict, file_out: Path, test_count: int, answers: bool) -> Path:
-    dir_pdf = Path(mkdtemp(prefix="testy_pdf_", dir='/ram'))
+    """
+    Create a PDF file with rendered test for the selected number of groups
+    :param test_input: test input data
+    :param file_out: where to save the output file
+    :param test_count: how many groups to generate
+    :param answers: True if answers should be included
+    :return: path to the created file
+    """
+    dir_pdf = Path(mkdtemp(prefix="testy_pdf_", dir='/tmp'))
 
-    pdfs_tasks = [create_single_test_pdf(test_input, group, dir_pdf, answers) for group in generate_group(test_count)]
+    last_questions = set()
+    formatted_tests = []
+    for group in generate_group(test_count):
+        formated_test, questions = format_test(test_input, group, answers, last_questions)
+        last_questions = questions
+        formatted_tests.append((formated_test, group))
+
+    pdfs_tasks = [create_single_test_pdf(content, group, dir_pdf) for i, (content, group) in enumerate(formatted_tests)]
     file_pdfs = await gather_with_concurrency(8, *pdfs_tasks)
 
     check_call(["pdftk"] + [f"{x.name}" for x in file_pdfs] + ["cat", "output", "merged.pdf"], cwd=dir_pdf)
@@ -125,6 +214,11 @@ async def create_test_pdf(test_input: dict, file_out: Path, test_count: int, ans
 
 
 def generate_group(iterations: int = math.inf) -> Iterator[str]:
+    """
+    Generate group names
+    :param iterations: how many groups to generate
+    :return: group names
+    """
     length = 1
 
     # offset to match the school year
@@ -141,6 +235,12 @@ def generate_group(iterations: int = math.inf) -> Iterator[str]:
 
 
 async def gather_with_concurrency(n, *coros):
+    """
+    Run coroutines with a limit on concurrency
+    :param n: how many coroutines can run at the same time
+    :param coros: coroutines to run
+    :return: results of coroutines
+    """
     semaphore = asyncio.Semaphore(n)
 
     async def sem_coro(coro):

@@ -4,8 +4,12 @@ class QuestionBase(TypedDict):
     question: str
     _id: int
 
+class QuestionTextAnswer(TypedDict):
+    answer: str
+    lines: int
+
 class QuestionText(QuestionBase):
-    text: Dict[str, str]
+    text: Dict[str, Union[str, QuestionTextAnswer]]
 
 class QuestionSelect(QuestionBase):
     options: List[str]

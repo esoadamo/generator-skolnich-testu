@@ -29,12 +29,21 @@ def format_question(question: Question, index: int, questions_total: int, answer
     output = f"### ({index + 1}/{questions_total}) {question['question']}\n\n"
 
     if 'text' in question:
-        for text, answer in question['text'].items():
+        for text, options in question['text'].items():
             output += f"{text} "
             if answers:
+                if type(options) == dict:
+                    answer = options['answer']
+                else:
+                    answer = options
                 output += f"**_{answer}_**"
             else:
-                output +='\\_' * (76 - len(text))
+                if type(options) == str:
+                    output +='\\_' * (76 - len(text))
+                else:
+                    output += "\n\n"
+                    for _ in range(options["lines"]):
+                        output += r"\hfill \underline{\hspace{\textwidth}}" + "\n\n"
             output += "\n\n"
     if 'options' in question:
         options = []

@@ -8,7 +8,9 @@ categories:
         řádkový úvod s **tučným** textem.
        text:
         Otázka na text 1: odpověď 1
-        Otázka na text 2: odpověď 2
+        Otázka na text 2 s delším popiskem:
+         answer: odpověď 2
+         lines: 2
   "Otázky s výběrem možností":
     select: 2
     questions:

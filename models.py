@@ -26,5 +26,6 @@ class Category(TypedDict):
 class Test(TypedDict):
     name: str
     includes: Optional[List[str]]
+    shuffle_categories: Optional[bool]
     categories: Dict[str, Category]
 

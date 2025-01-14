@@ -186,11 +186,15 @@ def format_test(test_input: Test, test_group: str, answers: bool, last_questions
 
     last_questions = last_questions or set()
     rnd = group_to_random(test_group)
+
     question_index = 0
     questions_total = sum(map(lambda x: x['select'], categories.values()))
 
     question_ids = set()
-    for category_name, category_data in categories.items():
+    categories_kv = list(categories.items())
+    if test_input.get('shuffle_categories'):
+        rnd.shuffle(categories_kv)
+    for category_name, category_data in categories_kv:
         content, questions = format_category(category_name, category_data, question_index, questions_total, rnd, answers, last_questions)
         question_ids.update(questions)
         output += content + "\n"

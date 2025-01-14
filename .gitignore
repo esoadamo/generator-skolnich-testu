@@ -1,2 +1,5 @@
 .vscode
 *.pdf
+.idea
+__pycache__
+
